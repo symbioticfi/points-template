@@ -1,0 +1,7 @@
+__pycache__/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+public/config.json
+
+.env

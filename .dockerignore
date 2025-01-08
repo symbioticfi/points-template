@@ -1,0 +1,14 @@
+# Ignore everything
+*
+
+# Allow files and directories
+!/requirements.txt
+!/src
+!/public
+
+# Ignore unnecessary files inside allowed directories
+# This should go after the allowed directories
+**/*~
+**/*.log
+**/.DS_Store
+**/Thumbs.db

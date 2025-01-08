@@ -1,0 +1,29 @@
+{
+  "type": "network",
+  "name": "Symbiotic",
+  "decimals": 48,
+  "description": "Symbiotic is a generalized shared security system enabling decentralized networks to bootstrap powerful, fully sovereign ecosystems.",
+  "tags": ["restaking"],
+  "links": [
+    {
+      "type": "website",
+      "name": "Website",
+      "url": "https://symbiotic.fi/"
+    },
+    {
+      "type": "social",
+      "name": "Github",
+      "url": "https://github.com/symbioticfi"
+    },
+    {
+      "type": "social",
+      "name": "Twitter",
+      "url": "https://x.com/symbioticfi"
+    },
+    {
+      "type": "docs",
+      "name": "Documentation",
+      "url": "https://docs.symbiotic.fi/"
+    }
+  ]
+}
