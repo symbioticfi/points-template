@@ -86,19 +86,6 @@ $ python3 src/fill_networks.py
 
 ## Updaters
 
-### Update events
-
-**All the events related to vault-network-operator delegations are parsed and saved into PostgreSQL DB.**
-
-**Start block:** Last processed block plus 1 (or Symbiotic deployment block minus 100)\
-**End block:** Latest finalized block\*
-
-**\*** There is an assumption the 160th block before the current one is finalized
-
-```
-$ python3 src/update_events.py
-```
-
 ### Update blocks
 
 **Blocks are parsed and saved into PostgreSQL DB.**
@@ -110,6 +97,19 @@ $ python3 src/update_events.py
 
 ```
 $ python3 src/update_blocks.py
+```
+
+### Update events
+
+**All the events related to vault-network-operator delegations are parsed and saved into PostgreSQL DB.**
+
+**Start block:** Last processed block plus 1 (or Symbiotic deployment block minus 100)\
+**End block:** Latest finalized block\*
+
+**\*** There is an assumption the 160th block before the current one is finalized
+
+```
+$ python3 src/update_events.py
 ```
 
 ### Update prices
@@ -156,13 +156,73 @@ $ python3 src/update_points.py
 $ python3 src/api.py
 ```
 
-## Dockerfile
+## Docker
 
-_Needs ENV ([see neccesary variables here](README.md#env))._
+### Dockerfile
 
-**1. Installs Python, PostgreSQL, and other global dependencies\
+1. Installs Python, PostgreSQL, and other global dependencies\
 2. Installs Python dependencies\
 3. Copies all the needed files inside the container\
-4. (default) Runs API**
+4. (default) Runs API
 
-_May be used to run all the programs described above._
+### Local usage
+
+1. Build an image
+
+```bash
+docker build -t points-api:local .
+```
+
+2. Run the image and API
+
+```bash
+docker run -d \
+  --name points-api \
+  --env-file .env \
+  -p 5000:5000 \
+  points-api:local
+```
+
+3. Execute scripts
+
+   - **Fill collaterals**
+
+   ```bash
+   docker exec points-api python src/fill_collaterals.py
+   ```
+
+   - **Fill networks**
+
+   ```bash
+   docker exec points-api python src/fill_networks.py
+   ```
+
+   - **Update blocks**
+
+   ```bash
+   docker exec points-api python src/update_blocks.py
+   ```
+
+   - **Update events**
+
+   ```bash
+   docker exec points-api python src/update_events.py
+   ```
+
+   - **Update prices**
+
+   ```bash
+   docker exec points-api python src/update_prices.py
+   ```
+
+   - **Update points**
+
+   ```bash
+   docker exec points-api python src/update_points.py
+   ```
+
+   - **Run API**
+
+   ```bash
+   docker exec points-api python src/update_points.py
+   ```
