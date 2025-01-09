@@ -509,7 +509,7 @@ class Events:
 
 if __name__ == "__main__":
     config = Config()
-    storage = Storage(config, init=True)
+    storage = Storage(config)
     w3_wrapper = Web3Wrapper(config, storage)
     events = Events(config, w3_wrapper, storage)
 

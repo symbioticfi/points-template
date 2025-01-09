@@ -193,8 +193,9 @@ class State:
 
         print(f"[State] OnSlash event_epoch={event_epoch}")
 
-        # The logic for partial or full slash distribution
-        if event_epoch != self.get_epoch_at(log["address"], log["captureTimestamp"]):
+        if event_epoch != self.get_epoch_at(
+            log["address"], log["args"]["captureTimestamp"]
+        ):
             print(
                 "[State] Slash event in previous epoch or forced slash scenario. Adjusting accordingly."
             )
