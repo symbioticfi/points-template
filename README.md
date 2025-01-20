@@ -36,7 +36,7 @@ PGSQL_PORT=5432
 
 See example data inside the [info.json](info.json) file.
 
-After the points' mechanic completion proceed through the [given instruction]() to integrate it to Symbiotic UI.
+After the points' logic completion, proceed through the [given instruction]() to integrate it into Symbiotic UI.
 
 ## How to use
 
@@ -90,7 +90,7 @@ $ python3 src/fill_networks.py
 
 ### Update blocks
 
-**Blocks are parsed and saved into PostgreSQL DB.**
+**Blocks are parsed and saved into PostgreSQL DB to optimize all operations related to timestamps, including state transitions, price mappings, and points calculations.**
 
 **Start block:** Last processed block plus 1 (or Symbiotic deployment block minus 100)\
 **End block:** Latest finalized block\*
@@ -103,7 +103,7 @@ $ python3 src/update_blocks.py
 
 ### Update events
 
-**All the events related to vault-network-operator delegations are parsed and saved into PostgreSQL DB.**
+**All the events related to vault-network-operator delegations are parsed and saved into PostgreSQL DB to further recreate the needed state for points calculations in DB.**
 
 **Start block:** Last processed block plus 1 (or Symbiotic deployment block minus 100)\
 **End block:** Latest finalized block\*
