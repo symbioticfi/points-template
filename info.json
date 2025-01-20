@@ -1,9 +1,9 @@
 {
   "type": "network",
-  "name": "Symbiotic",
+  "name": "Symbiotic points",
   "decimals": 48,
-  "description": "Symbiotic is a generalized shared security system enabling decentralized networks to bootstrap powerful, fully sovereign ecosystems.",
-  "tags": ["restaking"],
+  "description": "Symbiotic points are the native points of the Symbiotic ecosystem.",
+  "tags": ["symbiotic", "points"],
   "links": [
     {
       "type": "website",

@@ -36,16 +36,18 @@ PGSQL_PORT=5432
 
 See example data inside the [info.json](info.json) file.
 
+After the points' logic completion, proceed through the [given instruction]() to integrate it into Symbiotic UI.
+
 ## How to use
 
 There are three types of Python programs in this repository:
 
 1. [**Fillers**](README.md#fillers) - one-time scripts that help to fill the db with collaterals that need pricing and networks in which stake should be accounted to calculate points (can be multiple times but only if necessary to add some new data).
 2. [**Updaters**](README.md#updaters) - these scripts need to be executed after each particular period, e.g., every 15 minutes, to update the following data as time goes forward.
-      - Blocks
-      - Events
-      - Prices
-      - State/Points
+   - Blocks
+   - Events
+   - Prices
+   - State/Points
 3. [**API**](README.md#api) - an infinite-time running program that implements a REST API.
 
 **Order of execution:**
@@ -88,7 +90,7 @@ $ python3 src/fill_networks.py
 
 ### Update blocks
 
-**Blocks are parsed and saved into PostgreSQL DB.**
+**Blocks are parsed and saved into PostgreSQL DB to optimize all operations related to timestamps, including state transitions, price mappings, and points calculations.**
 
 **Start block:** Last processed block plus 1 (or Symbiotic deployment block minus 100)\
 **End block:** Latest finalized block\*
@@ -101,7 +103,7 @@ $ python3 src/update_blocks.py
 
 ### Update events
 
-**All the events related to vault-network-operator delegations are parsed and saved into PostgreSQL DB.**
+**All the events related to vault-network-operator delegations are parsed and saved into PostgreSQL DB to further recreate the needed state for points calculations in DB.**
 
 **Start block:** Last processed block plus 1 (or Symbiotic deployment block minus 100)\
 **End block:** Latest finalized block\*
