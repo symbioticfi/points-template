@@ -69,7 +69,7 @@ ADDRESSES = {
 BLOCKSCOUT_API_URLS = {
     "holesky": "eth-holesky.blockscout.com",
     "sepolia": "eth-sepolia.blockscout.com",
-    "mainnet": "eth-mainnet.blockscout.com",
+    "mainnet": "eth.blockscout.com",
 }
 
 COINMARKETCAP_API_URL = "pro-api.coinmarketcap.com"
