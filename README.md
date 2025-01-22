@@ -36,7 +36,7 @@ PGSQL_PORT=5432
 
 See example data inside the [info.json](info.json) file.
 
-After the points' logic completion, proceed through the [given instruction]() to integrate it into Symbiotic UI.
+After the points' logic completion, proceed through the [given instruction](https://github.com/symbioticfi/metadata-mainnet) to integrate it into Symbiotic UI.
 
 ## How to use
 
