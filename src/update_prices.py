@@ -91,7 +91,9 @@ class Prices:
             f"Starting parse_prices with time_start={time_start}, time_end={time_end}"
         )
 
-        if provider == "coinmarketcap":
+        if len(collaterals_data) == 0:
+            pass
+        elif provider == "coinmarketcap":
             params = {
                 "id": ",".join(
                     [
