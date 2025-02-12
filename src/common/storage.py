@@ -11,6 +11,8 @@ def int_to_numeric(value: int) -> Decimal:
     Convert a Python int (up to 256-bit) into a string
     that can be inserted into a NUMERIC(78,0) column.
     """
+    if value is None:
+        return None
     return Decimal(value)
 
 
