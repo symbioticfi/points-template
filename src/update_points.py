@@ -92,7 +92,9 @@ class Points:
             if not self.validate(stake_data):
                 continue
 
-            price = collaterals_data[stake_data["collateral"]]["price"]  # base - 1e24
+            price = collaterals_data[stake_data["collateral"]].get(
+                "price", 0
+            )  # base - 1e24
             sr_onv = stake_data["stake"]  # base - 10 ^ decimals
             s_onv[stake_data["operator"]][stake_data["vault"]] = (
                 sr_onv
@@ -122,7 +124,9 @@ class Points:
             vault_data = self.storage.get_global_vars(vault)
             active_balances_of = self.storage.get_active_balances_of(vault)
 
-            price = collaterals_data[vault_data["collateral"]]["price"]  # base - 1e24
+            price = collaterals_data[vault_data["collateral"]].get(
+                "price", 0
+            )  # base - 1e24
             for active_balance_of_data in active_balances_of:
                 sr_uv = active_balance_of_data[
                     "active_balance_of"
@@ -190,7 +194,11 @@ class Points:
         }  # base - 1e48
         p_onv = {
             operator: {
-                vault: p_no[operator] * s_onv[operator][vault] // s_on[operator]
+                vault: (
+                    (p_no[operator] * s_onv[operator][vault] // s_on[operator])
+                    if s_on[operator] > 0
+                    else 0
+                )
                 for vault in s_onv[operator]
             }
             for operator in p_no
@@ -201,7 +209,11 @@ class Points:
         }  # base - 1e48
         p_nvu = {
             vault: {
-                user: p_nv[vault] * s_uv[vault][user] // s_v[vault]
+                user: (
+                    (p_nv[vault] * s_uv[vault][user] // s_v[vault])
+                    if s_v[vault] > 0
+                    else 0
+                )
                 for user in s_uv[vault]
             }
             for vault in s_vn
