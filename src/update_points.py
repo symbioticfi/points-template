@@ -13,24 +13,28 @@ class Points:
         self.storage = storage
         self.name = self.config.get_points_module_name()
         self.state = State(self.config, self.w3_wrapper, self.storage)
+        self.debug = self.config.get_debug()
 
     def get_start_block(self):
-        print("[Points] Retrieving the starting block for points parsing...")
+        if self.debug:
+            print("[Points] Retrieving the starting block for points parsing...")
         last_processed_block = self.storage.get_processed_timepoint(self.state.name)
         if last_processed_block is not None:
             zero_block = False
             start_block = last_processed_block + 1
-            print(
-                f"  Last processed block found: {last_processed_block}, next start block={start_block}"
-            )
+            if self.debug:
+                print(
+                    f"  Last processed block found: {last_processed_block}, next start block={start_block}"
+                )
         else:
             zero_block = True
             start_block = self.w3_wrapper.get_creation_block(
                 self.w3_wrapper.addresses.vault_factory.address
             )
-            print(
-                f"  No last processed block found, using creation block={start_block}"
-            )
+            if self.debug:
+                print(
+                    f"  No last processed block found, using creation block={start_block}"
+                )
 
         return zero_block, start_block
 
@@ -51,31 +55,34 @@ class Points:
             last_prices_timestamp
         )
         end_block = min(last_prices_block, last_events_block)
-        print(f"[Points] end_block for points calculation={end_block}")
+        if self.debug:
+            print(f"[Points] end_block for points calculation={end_block}")
 
         return end_block
 
     def validate(self, stake_data):
         vault_data = self.storage.get_global_vars(stake_data["vault"])
-        print(
-            f"[Points] Validating stake_data for vault={stake_data['vault']}, delegator_type={vault_data['delegator_type']}"
-        )
+        if self.debug:
+            print(
+                f"[Points] Validating stake_data for vault={stake_data['vault']}, delegator_type={vault_data['delegator_type']}"
+            )
         if (
             vault_data["delegator_type"] == 1
         ):  # exclude FullRestakeDelegator from points calculation
-            print("[Points] Validation failed: FullRestakeDelegator is excluded.")
+            if self.debug:
+                print("[Points] Validation failed: FullRestakeDelegator is excluded.")
             return False
         return True
 
     def get_delegation_related_stakes(self, network_points_data, collaterals_data):
-        print(
-            f"[Points] Fetching delegation-related stakes for network={network_points_data['network']}, "
-            f"identifier={network_points_data['identifier']}"
-        )
+        if self.debug:
+            print(
+                f"[Points] Fetching delegation-related stakes for network={network_points_data['network']}, "
+                f"identifier={network_points_data['identifier']}"
+            )
         stakes = self.storage.get_stakes(
             network_points_data["network"], network_points_data["identifier"]
         )
-        print(network_points_data, collaterals_data)
 
         s_onv = {stake_data["operator"]: {} for stake_data in stakes}
         s_on = {}
@@ -107,7 +114,8 @@ class Points:
         return s_onv, s_on, s_vn, s_n
 
     def get_deposit_related_stakes(self, vaults, collaterals_data):
-        print(f"[Points] Fetching deposit-related stakes for vaults")
+        if self.debug:
+            print(f"[Points] Fetching deposit-related stakes for vaults")
         s_uv = {vault: {} for vault in vaults}
         s_v = {}
         for vault in vaults:
@@ -138,25 +146,28 @@ class Points:
         network_points_data,
         collaterals_data,
     ):
-        print(
-            f"[Points] parse_points_per_network called for network={network_points_data['network']}, "
-            f"identifier={network_points_data['identifier']}, block_range={previous_block_number}-{block_number}"
-        )
+        if self.debug:
+            print(
+                f"[Points] parse_points_per_network called for network={network_points_data['network']}, "
+                f"identifier={network_points_data['identifier']}, block_range={previous_block_number}-{block_number}"
+            )
 
         if (
             network_points_data["block_number_processed"] is not None
             and network_points_data["block_number_processed"] >= block_number
         ):
-            print(
-                "[Points] Network already processed at or beyond this block. Skipping."
-            )
+            if self.debug:
+                print(
+                    "[Points] Network already processed at or beyond this block. Skipping."
+                )
             return
 
         s_onv, s_on, s_vn, s_n = self.get_delegation_related_stakes(
             network_points_data, collaterals_data
         )
         if s_n == 0:
-            print("[Points] Total stake is zero, skipping points calculation.")
+            if self.debug:
+                print("[Points] Total stake is zero, skipping points calculation.")
             return
         s_uv, s_v = self.get_deposit_related_stakes(
             [vault for vault in s_vn], collaterals_data
@@ -196,43 +207,39 @@ class Points:
             for vault in s_vn
         }  # base - 1e48
 
-        print(
-            f"[Points] Points calculation complete for network={network_points_data['network']}, applying updates..."
-        )
-        for operator in p_onv:
-            for vault in p_onv[operator]:
-                current_points = self.storage.get_network_operator_vault_points(
-                    network_points_data["network"],
-                    network_points_data["identifier"],
-                    operator,
-                    vault,
-                )
-                self.storage.save_network_operator_vault_points(
+        if self.debug:
+            print(
+                f"[Points] Points calculation complete for network={network_points_data['network']}, applying updates..."
+            )
+
+        if p_onv:
+            self.storage.save_network_operator_vault_points_batch(
+                [
                     {
                         "network": network_points_data["network"],
                         "identifier": network_points_data["identifier"],
                         "operator": operator,
                         "vault": vault,
-                        "points": current_points + p_onv[operator][vault],
+                        "points": p_onv[operator][vault],
                     }
-                )
-        for vault in p_nvu:
-            for user in p_nvu[vault]:
-                current_points = self.storage.get_network_vault_user_points(
-                    network_points_data["network"],
-                    network_points_data["identifier"],
-                    vault,
-                    user,
-                )
-                self.storage.save_network_vault_user_points(
+                    for operator in p_onv
+                    for vault in p_onv[operator]
+                ]
+            )
+        if p_nvu:
+            self.storage.save_network_vault_user_points_batch(
+                [
                     {
                         "network": network_points_data["network"],
                         "identifier": network_points_data["identifier"],
                         "vault": vault,
                         "user": user,
-                        "points": current_points + p_nvu[vault][user],
+                        "points": p_nvu[vault][user],
                     }
-                )
+                    for vault in p_nvu
+                    for user in p_nvu[vault]
+                ]
+            )
         self.storage.save_networks_points_data(
             {
                 "network": network_points_data["network"],
@@ -245,18 +252,21 @@ class Points:
             }
         )
         self.storage.commit()
-        print(
-            f"[Points] Points updates committed for network={network_points_data['network']} at block={block_number}"
-        )
+        if self.debug:
+            print(
+                f"[Points] Points updates committed for network={network_points_data['network']} at block={block_number}"
+            )
 
     def process_block(self, previous_block_number, block_number):
-        print(
-            f"[Points] process_block called for block range: {previous_block_number}-{block_number}"
-        )
+        if self.debug:
+            print(
+                f"[Points] process_block called for block range: {previous_block_number}-{block_number}"
+            )
 
         last_processed_block = self.storage.get_processed_timepoint(self.name)
         if last_processed_block is not None and last_processed_block >= block_number:
-            print("[Points] Block already processed. Skipping.")
+            if self.debug:
+                print("[Points] Block already processed. Skipping.")
             return
 
         networks_points_data = self.storage.get_all_networks_points_data()
@@ -268,9 +278,10 @@ class Points:
         prices_data = {
             price_data["collateral"]: price_data for price_data in prices_data
         }
-        print(
-            f"[Points] Merging collateral data with prices at block={previous_block_number}"
-        )
+        if self.debug:
+            print(
+                f"[Points] Merging collateral data with prices at block={previous_block_number}"
+            )
         for collateral in collaterals_data:
             if collateral in prices_data:
                 collaterals_data[collateral] = {
@@ -290,16 +301,20 @@ class Points:
         self.storage.commit()
 
     def parse_points(self, previous_block_number, block_number):
-        print(
-            f"[Points] parse_points called, block_range={previous_block_number}-{block_number}"
-        )
+        if self.debug:
+            print(
+                f"[Points] parse_points called, block_range={previous_block_number}-{block_number}"
+            )
         # 1. Calculate the points at the current block number given the state and prices from the previous block number
         self.process_block(previous_block_number, block_number)
         # 2. Snapshot the points each 200 blocks
         if block_number % 200 == 0:
             last_snapshot_block = self.storage.get_last_snapshot_block_number()
             if last_snapshot_block is None or last_snapshot_block < block_number:
-                print(f"[Points] Taking a snapshot of points at block={block_number}")
+                if self.debug:
+                    print(
+                        f"[Points] Taking a snapshot of points at block={block_number}"
+                    )
                 self.storage.snapshot_points(block_number)
         # 3. Calculate a new state at the current block number
         #    (We update the state after the points to use the "previous" state data for points calculation)

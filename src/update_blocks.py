@@ -14,12 +14,15 @@ class Blocks:
         self.storage = storage
         self.name = self.config.get_blocks_module_name()
         self.chunk_size = 1000
+        self.debug = self.config.get_debug()
 
     def get_start_block(self):
-        print("Retrieving the starting block...")
+        if self.debug:
+            print("Retrieving the starting block...")
         last_processed_block = self.storage.get_processed_timepoint(self.name)
         if last_processed_block is not None:
-            print(f"  Last processed block found: {last_processed_block}")
+            if self.debug:
+                print(f"  Last processed block found: {last_processed_block}")
             return last_processed_block + 1
 
         print(
@@ -30,14 +33,16 @@ class Blocks:
         )
         start_block = creation_block - 100
 
-        print(f"  Using creation block minus 100: {start_block}")
+        if self.debug:
+            print(f"  Using creation block minus 100: {start_block}")
         return start_block
 
     def get_end_block(self):
         return self.w3_wrapper.get_finalized_block()
 
     def parse_blocks(self, from_block, to_block):
-        print(f"Parsing blocks from {from_block} to {to_block}...")
+        if self.debug:
+            print(f"Parsing blocks from {from_block} to {to_block}...")
         json = [
             {
                 "method": "eth_getBlockByNumber",
@@ -48,7 +53,8 @@ class Blocks:
             for block_number in range(from_block, to_block + 1)
         ]
 
-        print(f"  Sending batch request for {len(json)} blocks.")
+        if self.debug:
+            print(f"  Sending batch request for {len(json)} blocks.")
 
         response = requests.post(
             self.config.get_rpc(),
@@ -58,7 +64,8 @@ class Blocks:
         Helpers.raise_for_status_with_log(response)
         data = response.json()
 
-        print(f"  Received response for {len(data)} blocks.")
+        if self.debug:
+            print(f"  Received response for {len(data)} blocks.")
 
         for response_data in data:
             block_data = response_data["result"]
@@ -66,9 +73,10 @@ class Blocks:
             timestamp = int(block_data["timestamp"], 16)
             block_hash = block_data["hash"]
 
-            print(
-                f"    Storing block number: {number}, timestamp: {timestamp}, hash: {block_hash}"
-            )
+            if self.debug:
+                print(
+                    f"    Storing block number: {number}, timestamp: {timestamp}, hash: {block_hash}"
+                )
 
             self.storage.save_block_data(
                 {
@@ -78,7 +86,8 @@ class Blocks:
                 }
             )
 
-        print(f"  Updating last processed block to {to_block}.")
+        if self.debug:
+            print(f"  Updating last processed block to {to_block}.")
         self.storage.save_processed_timepoint(self.name, to_block)
         self.storage.commit()
 
@@ -95,7 +104,8 @@ class Blocks:
         start_block = self.get_start_block()
         end_block = self.get_end_block()
 
-        print(f"End block: {end_block}. Start block: {start_block}.")
+        if self.debug:
+            print(f"End block: {end_block}. Start block: {start_block}.")
 
         if start_block > end_block:
             print(

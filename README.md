@@ -30,6 +30,7 @@ PGSQL_USER=points-api
 PGSQL_PASSWORD=1234
 PGSQL_HOST=localhost
 PGSQL_PORT=5432
+DEBUG=false
 ```
 
 ## Metadata
