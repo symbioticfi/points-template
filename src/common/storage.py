@@ -2944,7 +2944,7 @@ class Storage:
     # -------------------------------------------------------------------------
     def get_last_snapshot_block_number(self):
         self.cursor.execute(
-            "SELECT MAX(block_number) FROM NetworkVaultPointsHistorical"
+            "SELECT MAX(block_number) FROM NetworkVaultUserPointsHistorical"
         )
         row = self.cursor.fetchone()
         return row[0] if row else None
@@ -2953,7 +2953,7 @@ class Storage:
         self.cursor.execute(
             """
             SELECT MAX(block_number)
-            FROM NetworkVaultPointsHistorical
+            FROM NetworkVaultUserPointsHistorical
             WHERE block_number <= %s
             """,
             (block_number,),
