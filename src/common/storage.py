@@ -2643,20 +2643,16 @@ class Storage:
     def get_active_balances_of(self, vault_address: str):
         self.cursor.execute(
             """
-            SELECT staker, active_balance_of_
-            FROM (
-                SELECT
-                    vus.staker,
-                    active_balance_of(
-                        vus.activeSharesOf,
-                        vgs.activeStake,
-                        vgs.activeShares
-                    ) as active_balance_of_
-                FROM VaultUserState vus
-                JOIN VaultGlobalState vgs ON vgs.vault = vus.vault
-                WHERE vus.vault = %s
-            ) subquery
-            WHERE active_balance_of_ != 0
+            SELECT
+                vus.staker,
+                active_balance_of(
+                    vus.activeSharesOf,
+                    vgs.activeStake,
+                    vgs.activeShares
+                )
+            FROM VaultUserState vus
+            JOIN VaultGlobalState vgs ON vgs.vault = vus.vault
+            WHERE vus.vault = %s
             """,
             (vault_address,),
         )
