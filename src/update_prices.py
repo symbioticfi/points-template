@@ -201,7 +201,7 @@ class Prices:
                         raise Exception(
                             f"Price data for {collateral} is missing for the time range {time_start} - {time_end}"
                         )
-                elif time_end - last_processed_timestamp >= 5 * 60 + 60:
+                elif time_end - last_processed_timestamp >= 5 * 60 + 120:
                     print(
                         f"    ERROR: Incomplete price data for collateral={collateral}, last_processed_timestamp={last_processed_timestamp}"
                     )
