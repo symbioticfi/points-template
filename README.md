@@ -1,6 +1,6 @@
 # External points API template
 
-**It is a template repository for networks and vaults that simplifies the implementation process for their point mechanics, which will be shown on the Symbiotic website ([see details here](https://symbioticfi.notion.site/External-points-API-16581c079c17804395e2f12881ea8899)).**
+**It is a template repository for networks and vaults that simplifies the implementation process for their point mechanics, which will be shown on the Symbiotic website ([see details here](https://symbioticfi.notion.site/External-Points-API-Specification-16981c079c178059b6b7e9740cf987a8)).**
 
 The repository is based on Symbiotic points logic implementation and may contain excessive for your case data/code, but at the same time, it allows you to implement most of the various mechanics.
 
