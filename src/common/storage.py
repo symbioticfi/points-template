@@ -1154,6 +1154,38 @@ class Storage:
             ),
         )
 
+    def save_networks_points_data_safe(self, data: dict):
+        self.cursor.execute(
+            """
+            INSERT INTO NetworksPointsData (
+                network,
+                identifier,
+                max_rate,
+                target_stake,
+                network_fee,
+                operator_fee,
+                block_number_processed
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (network, identifier)
+            DO UPDATE SET
+                max_rate = EXCLUDED.max_rate,
+                target_stake = EXCLUDED.target_stake,
+                network_fee = EXCLUDED.network_fee,
+                operator_fee = EXCLUDED.operator_fee,
+                block_number_processed = NetworksPointsData.block_number_processed
+            """,
+            (
+                data["network"],
+                int_to_numeric(data["identifier"]),
+                int_to_numeric(data["max_rate"]),
+                int_to_numeric(data["target_stake"]),
+                data["network_fee"],
+                data["operator_fee"],
+                data["block_number_processed"],
+            ),
+        )
+
     def get_all_networks_points_data(self):
         self.cursor.execute(
             """
@@ -2971,7 +3003,7 @@ class Storage:
             """
             SELECT vault, SUM(points)
             FROM NetworkVaultPointsHistorical
-            WHERE block_number=%s AND network=%s
+            WHERE block_number=%s AND network=%s AND points > 0
             GROUP BY vault
             """,
             (block_number, network),
@@ -2995,7 +3027,7 @@ class Storage:
             """
             SELECT network, vault, SUM(points)
             FROM NetworkVaultPointsHistorical
-            WHERE block_number=%s
+            WHERE block_number=%s AND points > 0
             GROUP BY network, vault
             ORDER BY network, vault
             LIMIT %s OFFSET %s
@@ -3039,7 +3071,7 @@ class Storage:
             """
             SELECT network, vault, SUM(points)
             FROM NetworkOperatorVaultPointsHistorical
-            WHERE block_number=%s AND operator=%s
+            WHERE block_number=%s AND operator=%s AND points > 0
             GROUP BY network, vault
             """,
             (block_number, operator),
@@ -3061,7 +3093,7 @@ class Storage:
             """
             SELECT network, vault, operator, SUM(points)
             FROM NetworkOperatorVaultPointsHistorical
-            WHERE block_number=%s
+            WHERE block_number=%s AND points > 0
             GROUP BY network, vault, operator
             ORDER BY network, vault, operator
             LIMIT %s OFFSET %s
@@ -3106,7 +3138,7 @@ class Storage:
             """
             SELECT network, vault, SUM(points)
             FROM NetworkVaultUserPointsHistorical
-            WHERE block_number=%s AND staker=%s
+            WHERE block_number=%s AND staker=%s AND points > 0
             GROUP BY network, vault
             """,
             (block_number, staker),
@@ -3128,7 +3160,7 @@ class Storage:
             """
             SELECT network, vault, staker, SUM(points)
             FROM NetworkVaultUserPointsHistorical
-            WHERE block_number=%s
+            WHERE block_number=%s AND points > 0
             GROUP BY network, vault, staker
             ORDER BY network, vault, staker
             LIMIT %s OFFSET %s
@@ -3218,6 +3250,7 @@ class Storage:
                 points,
                 receiver_type
             FROM AllData
+            WHERE points > 0
             ORDER BY network, vault, receiver, receiver_type
             LIMIT %s OFFSET %s
             """,
