@@ -14,8 +14,9 @@ class Prices:
         self.w3_wrapper = w3_wrapper
         self.storage = storage
         self.name = self.config.get_prices_module_name()
-        self.chunk_range = 3 * 24 * 60 * 60
+        self.chunk_range = 1 * 24 * 60 * 60
         self.provider = "coinmarketcap"
+        self.debug = self.config.get_debug()
 
     def get_start_timestamp(self):
         last_processed_timestamp = self.storage.get_processed_timepoint(self.name)
@@ -53,7 +54,8 @@ class Prices:
             )
 
     def process_price_data(self, quote_data, collateral, provider):
-        print(f"Processing price data for collateral: {collateral}")
+        if self.debug:
+            print(f"Processing price data for collateral: {collateral}")
 
         if provider == "coinmarketcap":
             time = quote_data["quote"]["USD"]["timestamp"]
@@ -72,7 +74,10 @@ class Prices:
 
         block_number = self.storage.get_block_number_by_timestamp(timestamp)
 
-        print(f"  Saving price to storage: block_number={block_number}, price={price}")
+        if self.debug:
+            print(
+                f"  Saving price to storage: block_number={block_number}, price={price}"
+            )
 
         self.storage.save_price(
             {
@@ -87,9 +92,10 @@ class Prices:
     def parse_prices(
         self, collaterals_data, time_start, time_end, provider="coinmarketcap"
     ):
-        print(
-            f"Starting parse_prices with time_start={time_start}, time_end={time_end}"
-        )
+        if self.debug:
+            print(
+                f"Starting parse_prices with time_start={time_start}, time_end={time_end}"
+            )
 
         if len(collaterals_data) == 0:
             pass
@@ -123,9 +129,10 @@ class Prices:
                 )
                 last_processed_timestamp = None
 
-                print(
-                    f"  Processing data for cmcID={cmcID}, quotes count={len(quote_data_list)}"
-                )
+                if self.debug:
+                    print(
+                        f"  Processing data for cmcID={cmcID}, quotes count={len(quote_data_list)}"
+                    )
 
                 for quote_data in quote_data_list:
                     for collateral in collaterals_data:
@@ -167,7 +174,8 @@ class Prices:
                     "interval": "5m",
                 }
 
-                print(f"    Collateral: {collateral}")
+                if self.debug:
+                    print(f"    Collateral: {collateral}")
 
                 response = requests.post(api_url, json=json)
                 Helpers.raise_for_status_with_log(response)
@@ -176,9 +184,10 @@ class Prices:
                 quote_data_list = self.sort_quote_data_list(data["data"], provider)
                 last_processed_timestamp = None
 
-                print(
-                    f"    Received {len(quote_data_list)} quotes for collateral: {collateral}"
-                )
+                if self.debug:
+                    print(
+                        f"    Received {len(quote_data_list)} quotes for collateral: {collateral}"
+                    )
 
                 for quote_data in quote_data_list:
                     last_processed_timestamp = self.process_price_data(
@@ -186,15 +195,13 @@ class Prices:
                     )
                 if last_processed_timestamp is None:
                     if self.config.get_price(collateral, time_start) is not None:
-
                         print(
                             f"    ERROR: Missing price data for collateral={collateral}, time range={time_start}-{time_end}"
                         )
                         raise Exception(
                             f"Price data for {collateral} is missing for the time range {time_start} - {time_end}"
                         )
-                elif time_end - last_processed_timestamp >= 5 * 60 + 60:
-
+                elif time_end - last_processed_timestamp >= 5 * 60 + 120:
                     print(
                         f"    ERROR: Incomplete price data for collateral={collateral}, last_processed_timestamp={last_processed_timestamp}"
                     )
@@ -205,7 +212,8 @@ class Prices:
             print(f"  ERROR: Provider '{provider}' is not supported")
             raise Exception(f"Provider {provider} is not supported")
 
-        print("  Saving final processed timepoint and committing.")
+        if self.debug:
+            print("  Saving final processed timepoint and committing.")
         self.storage.save_processed_timepoint(self.name, time_end)
         self.storage.commit()
 
@@ -217,7 +225,6 @@ class Prices:
         exceptions=(Exception,),
     )
     def parse_all_prices(self):
-
         print("Starting parse_all_prices...")
 
         collaterals = self.storage.get_collaterals()
@@ -229,7 +236,10 @@ class Prices:
         start_timestmap = self.get_start_timestamp()
         end_timestamp = self.get_end_timestamp()
 
-        print(f"Start timestamp: {start_timestmap}, Last timestamp: {end_timestamp}")
+        if self.debug:
+            print(
+                f"Start timestamp: {start_timestmap}, Last timestamp: {end_timestamp}"
+            )
 
         if start_timestmap > end_timestamp:
             print("Start timestamp is greater than last timestamp. Nothing to parse.")

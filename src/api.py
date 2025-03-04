@@ -102,11 +102,13 @@ def api_points(receiver_type, receiver_address):
                 500,
             )
         if updated_at == None:
-            return (
-                jsonify(
-                    {"error": "No snapshot found", "receiver_address": receiver_address}
-                ),
-                404,
+            return jsonify(
+                {
+                    "receiver_address": receiver_address,
+                    "receiver_type": receiver_type,
+                    "block_number": 0,
+                    "points": [],
+                }
             )
 
         if receiver_type == "staker":

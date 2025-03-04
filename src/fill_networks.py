@@ -62,7 +62,7 @@ class NetworksHelper:
         }
         for network in networks:
             for identifier in networks[network]:
-                self.storage.save_networks_points_data(
+                self.storage.save_networks_points_data_safe(
                     {
                         "network": network,
                         "identifier": identifier,

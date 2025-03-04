@@ -1,11 +1,12 @@
 import psycopg2
+from psycopg2.extras import execute_values
 from decimal import *
 
 from .helpers import Helpers
 from .constants import PATH
 
 
-def int_to_numeric(value: int) -> Decimal | None:
+def int_to_numeric(value: int) -> Decimal:
     """
     Convert a Python int (up to 256-bit) into a string
     that can be inserted into a NUMERIC(78,0) column.
@@ -41,9 +42,9 @@ class Storage:
             )
             conn.autocommit = True
             with conn.cursor() as cur:
-                cur.execute(f"DROP DATABASE IF EXISTS {test_data["dbname"]}")
+                cur.execute(f"DROP DATABASE IF EXISTS {test_data['dbname']}")
                 cur.execute(
-                    f"CREATE DATABASE {test_data["dbname"]} TEMPLATE {prod_data["dbname"]}"
+                    f"CREATE DATABASE {test_data['dbname']} TEMPLATE {prod_data['dbname']}"
                 )
             conn.close()
 
@@ -60,7 +61,7 @@ class Storage:
         if init:
             self.create_postgres_functions()
             self.setup_tables()
-            self.commit()
+            self.setup_indexes()
 
     def create_postgres_functions(self):
         # stake(...)
@@ -151,6 +152,8 @@ class Storage:
             $$;
             """
         )
+
+        self.commit()
 
     def setup_tables(self):
         # BlocksData
@@ -605,6 +608,379 @@ class Storage:
             """
         )
 
+        self.commit()
+
+    def setup_indexes(self):
+        orig_autocommit = self.connection.autocommit
+        self.connection.autocommit = True
+        try:
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_blocksdata_timestamp_number
+                ON BlocksData(timestamp, number);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_collaterals_symbol
+                ON Collaterals(symbol);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_collaterals_cmcid
+                ON Collaterals(cmcID);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_networkspointsdata_block_number
+                ON NetworksPointsData(block_number_processed);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_globalvars_delegator
+                ON GlobalVars(delegator);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_globalvars_network
+                ON GlobalVars(network);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_globalvars_collateral
+                ON GlobalVars(collateral);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_prices_collateral_block_number_desc
+                ON Prices(collateral, block_number DESC);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_onosoptinlogs_who
+                ON OperatorNetworkOptInServiceOptInLogs(who);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_onosoptinlogs_where_
+                ON OperatorNetworkOptInServiceOptInLogs(where_);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_onosoptoutlogs_who
+                ON OperatorNetworkOptInServiceOptOutLogs(who);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_onosoptoutlogs_where
+                ON OperatorNetworkOptInServiceOptOutLogs(where_);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ovosoptinlogs_who
+                ON OperatorVaultOptInServiceOptInLogs(who);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ovosoptinlogs_where
+                ON OperatorVaultOptInServiceOptInLogs(where_);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ovosoptoutlogs_who
+                ON OperatorVaultOptInServiceOptOutLogs(who);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ovosoptoutlogs_where
+                ON OperatorVaultOptInServiceOptOutLogs(where_);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vaultdepositlogs_vault
+                ON VaultDepositLogs(vault);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vaultdepositlogs_depositor
+                ON VaultDepositLogs(depositor);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vaultwithdrawlogs_vault
+                ON VaultWithdrawLogs(vault);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vaultwithdrawlogs_withdrawer
+                ON VaultWithdrawLogs(withdrawer);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vaultonslashlogs_vault
+                ON VaultOnSlashLogs(vault);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vaultonslashlogs_capturetimestamp
+                ON VaultOnSlashLogs(captureTimestamp);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vaulttransferlogs_vault
+                ON VaultTransferLogs(vault);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vaulttransferlogs_from
+                ON VaultTransferLogs(from_);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vaulttransferlogs_to
+                ON VaultTransferLogs(to_);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dsmnll_delegator_network
+                ON DelegatorSetMaxNetworkLimitLogs(delegator, network);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dsmnll_identifier
+                ON DelegatorSetMaxNetworkLimitLogs(identifier);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dsnl_delegator_network
+                ON DelegatorSetNetworkLimitLogs(delegator, network);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dsnl_identifier
+                ON DelegatorSetNetworkLimitLogs(identifier);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dsons_delegator_network
+                ON DelegatorSetOperatorNetworkSharesLogs(delegator, network);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dsons_operator
+                ON DelegatorSetOperatorNetworkSharesLogs(operator);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dsonl_delegator_network
+                ON DelegatorSetOperatorNetworkLimitLogs(delegator, network);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_dsonl_operator
+                ON DelegatorSetOperatorNetworkLimitLogs(operator);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_onos_state_status
+                ON OperatorNetworkOptInServiceState(status);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ovos_state_status
+                ON OperatorVaultOptInServiceState(status);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vaultuserstate_staker
+                ON VaultUserState(staker);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vaultglobalwithdrawals_epoch
+                ON VaultGlobalWithdrawalsState(epoch);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_vaultuserwithdrawals_staker
+                ON VaultUserWithdrawalsState(staker);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_delegatornetworkstate_network_identifier
+                ON DelegatorNetworkState(network, identifier);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_delegator0networkstate_network_identifier
+                ON Delegator0NetworkState(network, identifier);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_delegator0opnetworkstate_operator
+                ON Delegator0OperatorNetworkState(operator);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_delegator1networkstate_network_identifier
+                ON Delegator1NetworkState(network, identifier);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_delegator1opnetworkstate_operator
+                ON Delegator1OperatorNetworkState(operator);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_delegator2networkstate_network_identifier
+                ON Delegator2NetworkState(network, identifier);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_networkvaultpoints_vault
+                ON NetworkVaultPoints(vault);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_networkopvaultpoints_operator
+                ON NetworkOperatorVaultPoints(operator);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_networkopvaultpoints_vault
+                ON NetworkOperatorVaultPoints(vault);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_networkvaultuserpoints_staker
+                ON NetworkVaultUserPoints(staker);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_networkvaultuserpoints_vault
+                ON NetworkVaultUserPoints(vault);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_nvph_network
+                ON NetworkVaultPointsHistorical(network);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_nvph_vault
+                ON NetworkVaultPointsHistorical(vault);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_novph_operator
+                ON NetworkOperatorVaultPointsHistorical(operator);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_novph_vault
+                ON NetworkOperatorVaultPointsHistorical(vault);
+                """
+            )
+
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_nvuph_staker
+                ON NetworkVaultUserPointsHistorical(staker);
+                """
+            )
+            self.cursor.execute(
+                """
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_nvuph_vault
+                ON NetworkVaultUserPointsHistorical(vault);
+                """
+            )
+        except Exception as e:
+            print(f"Error creating indexes: {str(e)}")
+        self.connection.autocommit = orig_autocommit
+
     # -------------------------------------------------------------------------
     # Commit / Close
     # -------------------------------------------------------------------------
@@ -766,6 +1142,38 @@ class Storage:
                 network_fee = EXCLUDED.network_fee,
                 operator_fee = EXCLUDED.operator_fee,
                 block_number_processed = EXCLUDED.block_number_processed
+            """,
+            (
+                data["network"],
+                int_to_numeric(data["identifier"]),
+                int_to_numeric(data["max_rate"]),
+                int_to_numeric(data["target_stake"]),
+                data["network_fee"],
+                data["operator_fee"],
+                data["block_number_processed"],
+            ),
+        )
+
+    def save_networks_points_data_safe(self, data: dict):
+        self.cursor.execute(
+            """
+            INSERT INTO NetworksPointsData (
+                network,
+                identifier,
+                max_rate,
+                target_stake,
+                network_fee,
+                operator_fee,
+                block_number_processed
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (network, identifier)
+            DO UPDATE SET
+                max_rate = EXCLUDED.max_rate,
+                target_stake = EXCLUDED.target_stake,
+                network_fee = EXCLUDED.network_fee,
+                operator_fee = EXCLUDED.operator_fee,
+                block_number_processed = NetworksPointsData.block_number_processed
             """,
             (
                 data["network"],
@@ -2036,17 +2444,17 @@ class Storage:
                     gv.vault,
                     gv.delegator,
                     gv.delegator_type,
-                    vgs.activeStake,
-                    dns.maxNetworkLimit as maxNetworkLimit,
-                    d0ns.networkLimit AS networkLimit0,
-                    d0ns.totalOperatorNetworkShares,
-                    d0ons.operatorNetworkShares,
-                    d1ns.networkLimit AS networkLimit1,
-                    d1ons.operatorNetworkLimit,
-                    d2ns.networkLimit AS networkLimit2,
+                    COALESCE(vgs.activeStake, 0) as activeStake,
+                    COALESCE(dns.maxNetworkLimit, 0) as maxNetworkLimit,
+                    COALESCE(d0ns.networkLimit, 0) AS networkLimit0,
+                    COALESCE(d0ns.totalOperatorNetworkShares, 0) as totalOperatorNetworkShares,
+                    COALESCE(d0ons.operatorNetworkShares, 0) as operatorNetworkShares,
+                    COALESCE(d1ns.networkLimit, 0) AS networkLimit1,
+                    COALESCE(d1ons.operatorNetworkLimit, 0) as operatorNetworkLimit,
+                    COALESCE(d2ns.networkLimit, 0) AS networkLimit2,
                     COALESCE(d0ons.operator, d1ons.operator, gv.operator) AS operator,
-                    onos.status AS isOptedInNetwork,
-                    ovos.status AS isOptedInVault,
+                    COALESCE(onos.status, FALSE) AS isOptedInNetwork,
+                    COALESCE(ovos.status, FALSE) AS isOptedInVault,
                     c.collateral AS collateral_address,
                     CASE
                         WHEN gv.delegator_type NOT IN (2,3) THEN 1
@@ -2309,6 +2717,27 @@ class Storage:
             ),
         )
 
+    def save_network_vault_points_batch(self, points_data_list: list):
+        execute_values(
+            self.cursor,
+            """
+            INSERT INTO NetworkVaultPoints (network, identifier, vault, points)
+            VALUES %s
+            ON CONFLICT (network, identifier, vault)
+            DO UPDATE SET
+                points = NetworkVaultPoints.points + EXCLUDED.points
+            """,
+            [
+                (
+                    points_data["network"],
+                    int_to_numeric(points_data["identifier"]),
+                    points_data["vault"],
+                    int_to_numeric(points_data["points"]),
+                )
+                for points_data in points_data_list
+            ],
+        )
+
     def get_network_vault_points(self, network: str, identifier: int, vault: str):
         self.cursor.execute(
             """
@@ -2343,6 +2772,34 @@ class Storage:
                 points_data["vault"],
                 int_to_numeric(points_data["points"]),
             ),
+        )
+
+    def save_network_operator_vault_points_batch(self, points_data_list: list):
+        execute_values(
+            self.cursor,
+            """
+            INSERT INTO NetworkOperatorVaultPoints (
+                network,
+                identifier,
+                operator,
+                vault,
+                points
+            )
+            VALUES %s
+            ON CONFLICT (network, identifier, operator, vault)
+            DO UPDATE SET
+                points = NetworkOperatorVaultPoints.points + EXCLUDED.points
+            """,
+            [
+                (
+                    points_data["network"],
+                    int_to_numeric(points_data["identifier"]),
+                    points_data["operator"],
+                    points_data["vault"],
+                    int_to_numeric(points_data["points"]),
+                )
+                for points_data in points_data_list
+            ],
         )
 
     def get_network_operator_vault_points(
@@ -2381,6 +2838,34 @@ class Storage:
                 points_data["user"],
                 int_to_numeric(points_data["points"]),
             ),
+        )
+
+    def save_network_vault_user_points_batch(self, points_data_list: list):
+        execute_values(
+            self.cursor,
+            """
+            INSERT INTO NetworkVaultUserPoints (
+                network,
+                identifier,
+                vault,
+                staker,
+                points
+            )
+            VALUES %s
+            ON CONFLICT (network, identifier, vault, staker)
+            DO UPDATE SET
+                points = NetworkVaultUserPoints.points + EXCLUDED.points
+            """,
+            [
+                (
+                    points_data["network"],
+                    int_to_numeric(points_data["identifier"]),
+                    points_data["vault"],
+                    points_data["user"],
+                    int_to_numeric(points_data["points"]),
+                )
+                for points_data in points_data_list
+            ],
         )
 
     def get_network_vault_user_points(
@@ -2518,7 +3003,7 @@ class Storage:
             """
             SELECT vault, SUM(points)
             FROM NetworkVaultPointsHistorical
-            WHERE block_number=%s AND network=%s
+            WHERE block_number=%s AND network=%s AND points > 0
             GROUP BY vault
             """,
             (block_number, network),
@@ -2542,7 +3027,7 @@ class Storage:
             """
             SELECT network, vault, SUM(points)
             FROM NetworkVaultPointsHistorical
-            WHERE block_number=%s
+            WHERE block_number=%s AND points > 0
             GROUP BY network, vault
             ORDER BY network, vault
             LIMIT %s OFFSET %s
@@ -2586,7 +3071,7 @@ class Storage:
             """
             SELECT network, vault, SUM(points)
             FROM NetworkOperatorVaultPointsHistorical
-            WHERE block_number=%s AND operator=%s
+            WHERE block_number=%s AND operator=%s AND points > 0
             GROUP BY network, vault
             """,
             (block_number, operator),
@@ -2608,7 +3093,7 @@ class Storage:
             """
             SELECT network, vault, operator, SUM(points)
             FROM NetworkOperatorVaultPointsHistorical
-            WHERE block_number=%s
+            WHERE block_number=%s AND points > 0
             GROUP BY network, vault, operator
             ORDER BY network, vault, operator
             LIMIT %s OFFSET %s
@@ -2653,7 +3138,7 @@ class Storage:
             """
             SELECT network, vault, SUM(points)
             FROM NetworkVaultUserPointsHistorical
-            WHERE block_number=%s AND staker=%s
+            WHERE block_number=%s AND staker=%s AND points > 0
             GROUP BY network, vault
             """,
             (block_number, staker),
@@ -2675,7 +3160,7 @@ class Storage:
             """
             SELECT network, vault, staker, SUM(points)
             FROM NetworkVaultUserPointsHistorical
-            WHERE block_number=%s
+            WHERE block_number=%s AND points > 0
             GROUP BY network, vault, staker
             ORDER BY network, vault, staker
             LIMIT %s OFFSET %s
@@ -2765,6 +3250,7 @@ class Storage:
                 points,
                 receiver_type
             FROM AllData
+            WHERE points > 0
             ORDER BY network, vault, receiver, receiver_type
             LIMIT %s OFFSET %s
             """,

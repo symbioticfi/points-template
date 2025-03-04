@@ -23,6 +23,7 @@ class Events:
         self.name = self.config.get_events_module_name()
         self.chunk_size = 5000
         self.max_workers = 4
+        self.debug = self.config.get_debug()
 
     def get_logs(
         self,
@@ -42,18 +43,21 @@ class Events:
             tqdm(total=total_blocks, desc="Blocks processed") if show_progress else None
         )
 
-        print(f"  Starting ThreadPoolExecutor with max_workers={max_workers}")
+        if self.debug:
+            print(f"  Starting ThreadPoolExecutor with max_workers={max_workers}")
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             while chunks_to_process or future_to_chunk:
-                print(
-                    f"  Chunks to process: {chunks_to_process}, Futures: {len(future_to_chunk)}"
-                )
+                if self.debug:
+                    print(
+                        f"  Chunks to process: {chunks_to_process}, Futures: {len(future_to_chunk)}"
+                    )
                 while chunks_to_process and len(future_to_chunk) < max_workers:
                     chunk_from_block, chunk_to_block = chunks_to_process.pop()
-                    print(
-                        f"    Submitting logs fetch for chunk: {chunk_from_block}-{chunk_to_block}"
-                    )
+                    if self.debug:
+                        print(
+                            f"    Submitting logs fetch for chunk: {chunk_from_block}-{chunk_to_block}"
+                        )
                     future = executor.submit(
                         self.w3_wrapper.w3.eth.get_logs,
                         {
@@ -75,9 +79,10 @@ class Events:
                     try:
                         result = future.result()
                         logs.extend(result)
-                        print(
-                            f"    Successfully fetched {len(result)} logs for blocks {chunk_from_block}-{chunk_to_block}"
-                        )
+                        if self.debug:
+                            print(
+                                f"    Successfully fetched {len(result)} logs for blocks {chunk_from_block}-{chunk_to_block}"
+                            )
 
                         if progress_bar:
                             progress_bar.update(chunk_size)
@@ -100,9 +105,10 @@ class Events:
                                 if progress_bar:
                                     progress_bar.update(chunk_size)
                             else:
-                                print(
-                                    f"    Splitting chunk {chunk_from_block}-{chunk_to_block} into {chunk_from_block}-{mid_block} and {mid_block + 1}-{chunk_to_block}"
-                                )
+                                if self.debug:
+                                    print(
+                                        f"    Splitting chunk {chunk_from_block}-{chunk_to_block} into {chunk_from_block}-{mid_block} and {mid_block + 1}-{chunk_to_block}"
+                                    )
                                 chunks_to_process.append((chunk_from_block, mid_block))
                                 chunks_to_process.append(
                                     (mid_block + 1, chunk_to_block)
@@ -115,7 +121,8 @@ class Events:
         print("Retrieving the starting block for events parsing...")
         last_processed_block = self.storage.get_processed_timepoint(self.name)
         if last_processed_block is not None:
-            print(f"  Last processed block found: {last_processed_block}")
+            if self.debug:
+                print(f"  Last processed block found: {last_processed_block}")
             return last_processed_block + 1
 
         print(
@@ -125,14 +132,16 @@ class Events:
             self.w3_wrapper.addresses.vault_factory.address
         )
         start_block = creation_block - 100
-        print(f"  Using creation block minus 100: {start_block}")
+        if self.debug:
+            print(f"  Using creation block minus 100: {start_block}")
         return start_block
 
     def get_end_block(self):
         return self.w3_wrapper.get_finalized_block()
 
     def decode_vault_factory_logs(self, raw_logs):
-        print(f"Decoding {len(raw_logs)} raw logs from VaultFactory...")
+        if self.debug:
+            print(f"Decoding {len(raw_logs)} raw logs from VaultFactory...")
         contract = self.w3_wrapper.addresses.vault_factory.contract
 
         def decode_log(raw_log):
@@ -146,11 +155,13 @@ class Events:
                 raise ValueError("Unknown event signature")
 
         decoded = [decode_log(raw_log) for raw_log in raw_logs]
-        print(f"  Decoded logs count: {len(decoded)}")
+        if self.debug:
+            print(f"  Decoded logs count: {len(decoded)}")
         return decoded
 
     def collect_global_vars(self, logs):
-        print(f"Collecting global vars for {len(logs)} logs...")
+        if self.debug:
+            print(f"Collecting global vars for {len(logs)} logs...")
         var_sets = []
         for log in logs:
             vault = log["args"]["entity"]
@@ -164,7 +175,8 @@ class Events:
             collateral = Web3.to_checksum_address(result[1])
 
             if delegator == "0x0000000000000000000000000000000000000000":
-                print(f"  Skipping vault with zero delegator: {vault}")
+                if self.debug:
+                    print(f"  Skipping vault with zero delegator: {vault}")
                 continue
 
             finalized_block = self.w3_wrapper.get_finalized_block()
@@ -201,11 +213,13 @@ class Events:
                 var_set["network"] = Web3.to_checksum_address(result[1])
 
             var_sets.append(var_set)
-        print(f"  Global vars collected: {len(var_sets)}")
+        if self.debug:
+            print(f"  Global vars collected: {len(var_sets)}")
         return var_sets
 
     def parse_vault_factory(self, from_block, to_block):
-        print(f"Parsing VaultFactory events from {from_block} to {to_block}...")
+        if self.debug:
+            print(f"Parsing VaultFactory events from {from_block} to {to_block}...")
         contract_address = self.w3_wrapper.addresses.vault_factory.address
 
         raw_logs = self.get_logs(
@@ -217,7 +231,8 @@ class Events:
         )
         logs = self.decode_vault_factory_logs(raw_logs)
         var_sets = self.collect_global_vars(logs)
-        print(f"  Saving global vars for {len(var_sets)} new vaults...")
+        if self.debug:
+            print(f"  Saving global vars for {len(var_sets)} new vaults...")
         self.storage.save_global_vars(var_sets)
 
         return [
@@ -226,7 +241,10 @@ class Events:
         ]
 
     def decode_operator_network_opt_in_service_logs(self, raw_logs):
-        print(f"Decoding {len(raw_logs)} raw logs from OperatorNetworkOptInService...")
+        if self.debug:
+            print(
+                f"Decoding {len(raw_logs)} raw logs from OperatorNetworkOptInService..."
+            )
         contract = self.w3_wrapper.addresses.operator_network_opt_in_service.contract
 
         def decode_log(raw_log):
@@ -244,13 +262,15 @@ class Events:
                 raise ValueError("Unknown event signature")
 
         decoded = [decode_log(raw_log) for raw_log in raw_logs]
-        print(f"  Decoded logs count: {len(decoded)}")
+        if self.debug:
+            print(f"  Decoded logs count: {len(decoded)}")
         return decoded
 
     def parse_operator_network_opt_in_service_logs(self, from_block, to_block):
-        print(
-            f"Parsing OperatorNetworkOptInService logs from {from_block} to {to_block}..."
-        )
+        if self.debug:
+            print(
+                f"Parsing OperatorNetworkOptInService logs from {from_block} to {to_block}..."
+            )
         contract_address = (
             self.w3_wrapper.addresses.operator_network_opt_in_service.address
         )
@@ -268,11 +288,15 @@ class Events:
             max_workers=self.max_workers,
         )
         logs = self.decode_operator_network_opt_in_service_logs(raw_logs)
-        print(f"  Saving {len(logs)} OperatorNetworkOptInService logs...")
+        if self.debug:
+            print(f"  Saving {len(logs)} OperatorNetworkOptInService logs...")
         self.storage.save_operator_network_opt_in_service_logs(logs)
 
     def decode_operator_vault_opt_in_service_logs(self, raw_logs):
-        print(f"Decoding {len(raw_logs)} raw logs from OperatorVaultOptInService...")
+        if self.debug:
+            print(
+                f"Decoding {len(raw_logs)} raw logs from OperatorVaultOptInService..."
+            )
         contract = self.w3_wrapper.addresses.operator_vault_opt_in_service.contract
 
         def decode_log(raw_log):
@@ -290,13 +314,15 @@ class Events:
                 raise ValueError("Unknown event signature")
 
         decoded = [decode_log(raw_log) for raw_log in raw_logs]
-        print(f"  Decoded logs count: {len(decoded)}")
+        if self.debug:
+            print(f"  Decoded logs count: {len(decoded)}")
         return decoded
 
     def parse_operator_vault_opt_in_service_logs(self, from_block, to_block):
-        print(
-            f"Parsing OperatorVaultOptInService logs from {from_block} to {to_block}..."
-        )
+        if self.debug:
+            print(
+                f"Parsing OperatorVaultOptInService logs from {from_block} to {to_block}..."
+            )
         contract_address = (
             self.w3_wrapper.addresses.operator_vault_opt_in_service.address
         )
@@ -314,11 +340,13 @@ class Events:
             max_workers=self.max_workers,
         )
         logs = self.decode_operator_vault_opt_in_service_logs(raw_logs)
-        print(f"  Saving {len(logs)} OperatorVaultOptInService logs...")
+        if self.debug:
+            print(f"  Saving {len(logs)} OperatorVaultOptInService logs...")
         self.storage.save_operator_vault_opt_in_service_logs(logs)
 
     def decode_vault_logs(self, raw_logs):
-        print(f"Decoding {len(raw_logs)} raw logs from vaults...")
+        if self.debug:
+            print(f"Decoding {len(raw_logs)} raw logs from vaults...")
         contract = Address(
             self.w3_wrapper, "vault", "0x0000000000000000000000000000000000000000"
         ).contract
@@ -346,13 +374,15 @@ class Events:
                 raise ValueError("Unknown event signature")
 
         decoded = [decode_log(raw_log) for raw_log in raw_logs]
-        print(f"  Decoded vault logs count: {len(decoded)}")
+        if self.debug:
+            print(f"  Decoded vault logs count: {len(decoded)}")
         return decoded
 
     def parse_vault_logs(self, vaults, from_block, to_block):
-        print(
-            f"Parsing vault logs for {len(vaults)} vaults, blocks {from_block}-{to_block}..."
-        )
+        if self.debug:
+            print(
+                f"Parsing vault logs for {len(vaults)} vaults, blocks {from_block}-{to_block}..."
+            )
         raw_logs = self.get_logs(
             vaults,
             [
@@ -372,11 +402,13 @@ class Events:
             max_workers=self.max_workers,
         )
         logs = self.decode_vault_logs(raw_logs)
-        print(f"  Saving {len(logs)} decoded vault logs...")
+        if self.debug:
+            print(f"  Saving {len(logs)} decoded vault logs...")
         self.storage.save_vault_logs(logs)
 
     def decode_delegator_logs(self, raw_logs):
-        print(f"Decoding {len(raw_logs)} raw logs from delegators...")
+        if self.debug:
+            print(f"Decoding {len(raw_logs)} raw logs from delegators...")
         contract = Address(
             self.w3_wrapper, "delegator", "0x0000000000000000000000000000000000000000"
         ).contract
@@ -422,13 +454,15 @@ class Events:
                 raise ValueError("Unknown event signature")
 
         decoded = [decode_log(raw_log) for raw_log in raw_logs]
-        print(f"  Decoded delegator logs count: {len(decoded)}")
+        if self.debug:
+            print(f"  Decoded delegator logs count: {len(decoded)}")
         return decoded
 
     def parse_delegator_logs(self, delegators, from_block, to_block):
-        print(
-            f"Parsing delegator logs for {len(delegators)} delegators, blocks {from_block}-{to_block}..."
-        )
+        if self.debug:
+            print(
+                f"Parsing delegator logs for {len(delegators)} delegators, blocks {from_block}-{to_block}..."
+            )
         raw_logs = self.get_logs(
             delegators,
             [
@@ -448,19 +482,22 @@ class Events:
             max_workers=self.max_workers,
         )
         logs = self.decode_delegator_logs(raw_logs)
-        print(f"  Saving {len(logs)} decoded delegator logs...")
+        if self.debug:
+            print(f"  Saving {len(logs)} decoded delegator logs...")
         self.storage.save_delegator_logs(logs)
 
     def parse_logs(self, from_block, to_block):
-        print(f"parse_logs called for blocks {from_block}-{to_block}...")
+        if self.debug:
+            print(f"parse_logs called for blocks {from_block}-{to_block}...")
         all_modules = self.storage.get_all_modules()
         all_modules.extend(self.parse_vault_factory(from_block, to_block))
         self.parse_operator_network_opt_in_service_logs(from_block, to_block)
         self.parse_operator_vault_opt_in_service_logs(from_block, to_block)
         if len(all_modules) != 0:
-            print(
-                f"  Found {len(all_modules)} total modules to parse (existing + new)."
-            )
+            if self.debug:
+                print(
+                    f"  Found {len(all_modules)} total modules to parse (existing + new)."
+                )
             self.parse_vault_logs(
                 [modules["vault"] for modules in all_modules], from_block, to_block
             )
@@ -468,11 +505,16 @@ class Events:
                 [modules["delegator"] for modules in all_modules], from_block, to_block
             )
         else:
-            print("  No modules to parse logs for at this time.")
+            if self.debug:
+                print("  No modules to parse logs for at this time.")
 
-        print(f"  Updating last processed block to {to_block} and committing data.")
+        if self.debug:
+            print(f"  Updating last processed block to {to_block} and committing data.")
         self.storage.save_processed_timepoint(self.name, to_block)
         self.storage.commit()
+        print(
+            f"  Updated last processed block from {from_block} to {to_block} and committed data."
+        )
 
     @retry(
         tries=5,

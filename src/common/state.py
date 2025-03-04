@@ -4,9 +4,11 @@ class State:
         self.w3_wrapper = w3_wrapper
         self.storage = storage
         self.name = self.config.get_state_module_name()
+        self.debug = self.config.get_debug()
 
     def get_logs(self, block_number):
-        print(f"[State] get_logs called for block_number={block_number}")
+        if self.debug:
+            print(f"[State] get_logs called for block_number={block_number}")
         raw_logs = sorted(
             [
                 {
@@ -31,20 +33,21 @@ class State:
             key=lambda x: (x["blockNumber"], x["logIndex"]),
         )
 
-        print(f"[State] Fetched {len(raw_logs)} raw logs at block {block_number}")
+        if self.debug:
+            print(f"[State] Fetched {len(raw_logs)} raw logs at block {block_number}")
         return raw_logs
 
     def get_epoch_at(self, vault_address, timestamp):
-
         global_vars = self.storage.get_global_vars(vault_address)
         return (timestamp - global_vars["epochDurationInit"]) // global_vars[
             "epochDuration"
         ]
 
     def process_operator_network_opt_in_service_log_opt_in(self, log):
-        print(
-            f"[State] Processing OperatorNetworkOptInService OptIn event. Operator={log['args']['who']}, Network={log['args']['where']}"
-        )
+        if self.debug:
+            print(
+                f"[State] Processing OperatorNetworkOptInService OptIn event. Operator={log['args']['who']}, Network={log['args']['where']}"
+            )
         self.storage.save_operator_network_opt_in_service_state(
             {
                 "operator": log["args"]["who"],
@@ -54,9 +57,10 @@ class State:
         )
 
     def process_operator_network_opt_in_service_log_opt_out(self, log):
-        print(
-            f"[State] Processing OperatorNetworkOptInService OptOut event. Operator={log['args']['who']}, Network={log['args']['where']}"
-        )
+        if self.debug:
+            print(
+                f"[State] Processing OperatorNetworkOptInService OptOut event. Operator={log['args']['who']}, Network={log['args']['where']}"
+            )
         self.storage.save_operator_network_opt_in_service_state(
             {
                 "operator": log["args"]["who"],
@@ -66,9 +70,10 @@ class State:
         )
 
     def process_operator_vault_opt_in_service_log_opt_in(self, log):
-        print(
-            f"[State] Processing OperatorVaultOptInService OptIn event. Operator={log['args']['who']}, Vault={log['args']['where']}"
-        )
+        if self.debug:
+            print(
+                f"[State] Processing OperatorVaultOptInService OptIn event. Operator={log['args']['who']}, Vault={log['args']['where']}"
+            )
         self.storage.save_operator_vault_opt_in_service_state(
             {
                 "operator": log["args"]["who"],
@@ -78,9 +83,10 @@ class State:
         )
 
     def process_operator_vault_opt_in_service_log_opt_out(self, log):
-        print(
-            f"[State] Processing OperatorVaultOptInService OptOut event. Operator={log['args']['who']}, Vault={log['args']['where']}"
-        )
+        if self.debug:
+            print(
+                f"[State] Processing OperatorVaultOptInService OptOut event. Operator={log['args']['who']}, Vault={log['args']['where']}"
+            )
         self.storage.save_operator_vault_opt_in_service_state(
             {
                 "operator": log["args"]["who"],
@@ -90,9 +96,10 @@ class State:
         )
 
     def process_vault_log_deposit(self, log):
-        print(
-            f"[State] Processing Vault Deposit event. Vault={log['address']}, User={log['args']['onBehalfOf']}"
-        )
+        if self.debug:
+            print(
+                f"[State] Processing Vault Deposit event. Vault={log['address']}, User={log['args']['onBehalfOf']}"
+            )
 
         vault_global_state = self.storage.get_vault_global_state(log["address"])
         vault_user_state = self.storage.get_vault_user_state(
@@ -117,9 +124,10 @@ class State:
         )
 
     def process_vault_log_withdraw(self, log):
-        print(
-            f"[State] Processing Vault Withdraw event. Vault={log['address']}, User={log['args']['withdrawer']}"
-        )
+        if self.debug:
+            print(
+                f"[State] Processing Vault Withdraw event. Vault={log['address']}, User={log['args']['withdrawer']}"
+            )
 
         vault_global_state = self.storage.get_vault_global_state(log["address"])
         self.storage.save_vault_global_state(
@@ -191,8 +199,10 @@ class State:
             )
         )
 
-        print(f"[State] OnSlash event_epoch={event_epoch}")
+        if self.debug:
+            print(f"[State] OnSlash event_epoch={event_epoch}")
 
+        # The logic for partial or full slash distribution
         if event_epoch != self.get_epoch_at(
             log["address"], log["args"]["captureTimestamp"]
         ):
@@ -252,7 +262,8 @@ class State:
                 }
             )
         else:
-            print("[State] Slash event in the current epoch.")
+            if self.debug:
+                print("[State] Slash event in the current epoch.")
             activeStake_ = vault_global_state["activeStake"]
             nextWithdrawals = vault_global_withdrawals_state_next["withdrawals"]
             slashableAmount = activeStake_ + nextWithdrawals
@@ -283,16 +294,18 @@ class State:
         print("[State] OnSlash processed successfully.")
 
     def process_vault_log_transfer(self, log):
-        print(
-            f"[State] Processing Vault Transfer event. Vault={log['address']}, From={log['args']['from']}, To={log['args']['to']}"
-        )
+        if self.debug:
+            print(
+                f"[State] Processing Vault Transfer event. Vault={log['address']}, From={log['args']['from']}, To={log['args']['to']}"
+            )
         if (
             log["args"]["from"] == "0x0000000000000000000000000000000000000000"
             or log["args"]["to"] == "0x0000000000000000000000000000000000000000"
         ):
-            print(
-                "[State] Transfer from or to zero address. No user state update needed."
-            )
+            if self.debug:
+                print(
+                    "[State] Transfer from or to zero address. No user state update needed."
+                )
             return
 
         vault_user_state_from = self.storage.get_vault_user_state(
@@ -320,7 +333,8 @@ class State:
         )
 
     def process_delegator_log_set_max_network_limit(self, log):
-        print("[State] Processing SetMaxNetworkLimit event for delegator.")
+        if self.debug:
+            print("[State] Processing SetMaxNetworkLimit event for delegator.")
         global_vars = self.storage.get_global_vars(log["address"])
         self.storage.save_delegator_network_state(
             {
@@ -384,7 +398,8 @@ class State:
             raise Exception("Unsupported delegator type")
 
     def process_delegator_log_set_network_limit(self, log):
-        print("[State] Processing SetNetworkLimit event for delegator.")
+        if self.debug:
+            print("[State] Processing SetNetworkLimit event for delegator.")
         global_vars = self.storage.get_global_vars(log["address"])
         if global_vars["delegator_type"] == 0:
             delegator_network_state = self.storage.get_delegator0_network_state(
@@ -429,7 +444,8 @@ class State:
             raise Exception("Unsupported delegator type")
 
     def process_delegator_log_set_operator_network_shares(self, log):
-        print("[State] Processing SetOperatorNetworkShares event for delegator.")
+        if self.debug:
+            print("[State] Processing SetOperatorNetworkShares event for delegator.")
         global_vars = self.storage.get_global_vars(log["address"])
         if global_vars["delegator_type"] == 0:
             delegator_operator_network_state = (
@@ -469,7 +485,8 @@ class State:
             raise Exception("Unsupported delegator type")
 
     def process_delegator_log_set_operator_network_limit(self, log):
-        print("[State] Processing SetOperatorNetworkLimit event for delegator.")
+        if self.debug:
+            print("[State] Processing SetOperatorNetworkLimit event for delegator.")
         global_vars = self.storage.get_global_vars(log["address"])
         if global_vars["delegator_type"] == 1:
             self.storage.save_delegator1_operator_network_state(
@@ -485,7 +502,10 @@ class State:
             raise Exception("Unsupported delegator type")
 
     def process_log(self, log):
-        print(f"[State] Processing log event={log['event']}, address={log['address']}")
+        if self.debug:
+            print(
+                f"[State] Processing log event={log['event']}, address={log['address']}"
+            )
         if log["event"] == "OptIn":
             if (
                 log["address"]
@@ -526,13 +546,18 @@ class State:
             self.process_delegator_log_set_operator_network_limit(log)
 
     def process_block(self, block_number):
-        print(f"[State] process_block called for block_number={block_number}")
+        if self.debug:
+            print(f"[State] process_block called for block_number={block_number}")
         logs = self.get_logs(block_number)
-        print(f"[State] Processing {len(logs)} logs for block_number={block_number}")
+        if self.debug:
+            print(
+                f"[State] Processing {len(logs)} logs for block_number={block_number}"
+            )
 
         for log in logs:
             self.process_log(log)
 
-        print(f"[State] Saving processed timepoint for block_number={block_number}")
+        if self.debug:
+            print(f"[State] Saving processed timepoint for block_number={block_number}")
         self.storage.save_processed_timepoint(self.name, block_number)
         self.storage.commit()

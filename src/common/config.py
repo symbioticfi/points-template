@@ -22,6 +22,9 @@ class Config:
     def get_rpc(self):
         return os.getenv("RPC")
 
+    def get_debug(self):
+        return os.getenv("DEBUG") == "true"
+
     def get_chain(self):
         return os.getenv("CHAIN")
 
